@@ -65,6 +65,13 @@ tr[data-size]{cursor:pointer}
 .ostlist{display:flex;flex-direction:column;gap:4px;font-size:13px}
 .ostlist div{display:flex;justify-content:space-between;gap:8px}
 .ostlist b{color:var(--red);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;padding:6px 12px;cursor:pointer}
+.seg button.on{background:var(--cyan);color:#06222a;font-weight:650}
+body.free #paneR{display:none}
+body.free main{grid-template-columns:minmax(0,1fr) 360px}
+body.free .gOnly{display:none}
+body:not(.free) .fOnly{display:none}
 .play{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);background:var(--panel)}
 .play .ph{padding:4px 9px;font-size:12px}
 .play .ph.on{border-color:var(--cyan);color:var(--cyan)}
@@ -80,6 +87,7 @@ canvas.inline{position:static;height:96px}
   aside{overflow:visible}
 }
 @media print{
+  .seg{display:none}
   body{background:#fff;color:#000;height:auto}
   header,.steps,.hint,.noprint,.pane h2 .btn,.chips{display:none!important}
   main{grid-template-columns:1fr 1fr;grid-auto-rows:auto}
@@ -94,6 +102,7 @@ canvas.inline{position:static;height:96px}
 <body>
 <header>
   <h1><span>FD</span> Nail Planner</h1>
+  <span class="seg" id="modeSeg"><button data-m="free">Free cut</button><button data-m="guided">Guided</button></span>
   <select id="caseSel" title="Saved cases"></select>
   <input id="caseName" type="text" placeholder="Case label (initials, not names)" style="width:220px">
   <button class="btn primary" id="addX">+ Add X-rays</button><input type="file" id="files" accept="image/*" multiple hidden>
@@ -106,7 +115,7 @@ canvas.inline{position:static;height:96px}
 
 <main>
   <section class="pane">
-    <h2>Film — mark here <span class="spacer"></span>
+    <h2>Film — work here <span class="spacer"></span>
       <button class="btn" id="zoomOut">−</button><button class="btn" id="zoomIn">+</button><button class="btn" id="zoomFit">Fit</button>
     </h2>
     <div class="cvwrap" id="wrapL">
@@ -124,7 +133,7 @@ canvas.inline{position:static;height:96px}
     </div>
   </section>
 
-  <section class="pane">
+  <section class="pane" id="paneR">
     <h2>The surgery — cut, straighten, nail</h2>
     <div class="cvwrap" id="wrapR"><canvas id="cvR"></canvas></div>
     <div class="play noprint" id="play" style="visibility:hidden">
@@ -147,7 +156,16 @@ canvas.inline{position:static;height:96px}
     <div class="card noprint">
       <h3>Steps</h3>
       <div class="steps" id="steps"></div>
-      <div class="row" style="margin-top:8px">
+      <div class="row fOnly" style="margin-top:8px">
+        <button class="btn" id="fUndo">Undo</button>
+        <button class="btn" id="fDel">Delete piece</button>
+        <button class="btn danger" id="fReset">Start again</button>
+      </div>
+      <div class="row fOnly">
+        <label>Turn the selected piece</label>
+        <button class="btn" data-rot="-5">−5°</button><button class="btn" data-rot="-1">−1°</button><button class="btn" data-rot="1">+1°</button><button class="btn" data-rot="5">+5°</button>
+      </div>
+      <div class="row gOnly" style="margin-top:8px">
         <button class="btn" id="undoPt">Remove all cuts</button>
         <button class="btn" id="clearLine">Start the line again</button>
       </div>
@@ -155,7 +173,7 @@ canvas.inline{position:static;height:96px}
         <label for="calMm">Real length of the scale line</label>
         <input type="number" id="calMm" min="1" step="0.5" value="25"> <span class="note">mm</span>
       </div>
-      <div class="row">
+      <div class="row gOnly">
         <label for="stripW">Width of bone shown</label>
         <input type="range" id="stripW" min="5" max="60" value="22" style="flex:1">
       </div>
@@ -168,8 +186,9 @@ canvas.inline{position:static;height:96px}
       <p class="note" style="margin-top:6px">One Fassier-Duval nail, five diameters. Drawn thicker than life so the parts show.</p>
     </div>
     <div class="card" id="resNail"></div>
-    <div class="card" id="resLen"></div>
-    <div class="card" id="resOst"></div>
+    <div class="card fOnly" id="resFree"></div>
+    <div class="card gOnly" id="resLen"></div>
+    <div class="card gOnly" id="resOst"></div>
     <div class="card">
       <h3>About the numbers</h3>
       <p class="note">Nail sizes, thread lengths, reamers and catalogue lengths are from the maker's Fassier-Duval surgical technique, FD-ST-EN Rev M (Jan 2024): <a href="https://www.orthopediatrics.com/wp-content/uploads/2023/12/FD-ST-EN-revM.pdf" target="_blank" rel="noopener">open the guide</a>. The suggested size is this planner's rule (largest nail whose reamer passes the isthmus) and is yours to change. A drawing on a 2D film does not show rotation. Check every figure against the film and the set in theatre.</p>
@@ -194,7 +213,7 @@ const $=id=>document.getElementById(id);
 const cvL=$('cvL'), cvR=$('cvR'), gL=cvL.getContext('2d'), gR=cvR.getContext('2d');
 let S=blank(), img=null, tool='pan', V={s:1,ox:0,oy:0,auto:true}, drag=null;
 function blank(){return{id:'c'+Date.now(),name:'',bone:'femur',side:'Right',view:'AP',imgData:null,
-  cal:{a:null,b:null,mm:25},pts:[],isth:{a:null,b:null},epi:null,pphys:null,size:null,fix:null,strip:22,updated:Date.now()}}
+  mode:'free',free:{pieces:[],pin:null,nail:null},cal:{a:null,b:null,mm:25},pts:[],isth:{a:null,b:null},epi:null,pphys:null,size:null,fix:null,strip:22,updated:Date.now()}}
 
 /* ---------- Storage (IndexedDB, this computer only) ---------- */
 let db=null;
@@ -254,11 +273,11 @@ function setImage(src,fresh){const im=new Image();im.onload=()=>{
     let data=src;const max=2400,m=Math.max(im.width,im.height);
     if(fresh){const sc=Math.min(1,max/m),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
       c.getContext('2d').drawImage(im,0,0,c.width,c.height);data=c.toDataURL('image/jpeg',.9);
-      if(S.imgData){S.cal={a:null,b:null,mm:S.cal.mm};S.pts=[];S.isth={a:null,b:null};S.epi=null;S.pphys=null;S.size=null;S.fix=null}
+      if(S.imgData){S.free={pieces:[],pin:null,nail:null};S.cal={a:null,b:null,mm:S.cal.mm};S.pts=[];S.isth={a:null,b:null};S.epi=null;S.pphys=null;S.size=null;S.fix=null}
       S.imgData=data;const im2=new Image();im2.onload=()=>{img=im2;afterImage()};im2.src=data}
     else{img=im;afterImage()}};im.src=src}
 function afterImage(){$('drop').style.display='none';fit();setTool(nextTool());syncUi();draw();saveSoon()}
-function nextTool(){if(!S.cal.b)return'cal';if(S.pts.length<2)return'ends';if(!S.isth.b)return'isth';if(!S.epi)return'epi';return'pan'}
+function nextTool(){if(!S.cal.b)return'cal';if(S.mode==='free')return S.free.pieces.length?'fmove':'fcut';if(S.pts.length<2)return'ends';if(!S.isth.b)return'isth';if(!S.epi)return'epi';return'pan'}
 
 /* ---------- View ---------- */
 function sizeCanvas(c){const r=c.parentElement.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.max(1,Math.round(r.width*d));c.height=Math.max(1,Math.round(r.height*d));return{w:r.width,h:r.height,d}}
@@ -283,23 +302,41 @@ const STEPS=[
  {t:'pan',  name:'Move and adjust', sub:'Drag the film to move it; drag any point to correct it. Scroll to zoom.',done:()=>false,
   hint:''}
 ];
-function setTool(t){tool=t;renderSteps();const st=STEPS.find(s=>s.t===t);$('hint').textContent=img&&st?st.hint:'';cvL.style.cursor=t==='pan'?'grab':'crosshair'}
+const FSTEPS=[
+ STEPS[0],
+ {t:'fcut', name:'Cut out',sub:'Draw around the piece of bone you want to free. Keep close to the cortex.',done:()=>S.free.pieces.length>0,
+  hint:'Cut out: press and draw around the piece of bone, then let go. Or click point by point and finish on the first point. Keep close to the cortex.'},
+ {t:'fpin', name:'Pin',sub:'One click where the piece should turn about (the apex of the bend).',done:()=>!!S.free.pin,
+  hint:'Pin: click the point the piece turns about, usually the apex of the bend.'},
+ {t:'frot', name:'Turn',sub:'Drag to turn the selected piece about the pin.',done:()=>S.free.pieces.some(p=>Math.abs(p.rot)>.002),
+  hint:'Turn: drag anywhere to turn the selected piece about the pin. Shift-click more pieces to turn them together.'},
+ {t:'fmove',name:'Move',sub:'Drag a piece to slide it. Click a piece to select it; shift-click to select several.',done:()=>false,
+  hint:'Move: drag a piece to slide it. Click selects, shift-click adds to the selection.'},
+ {t:'fnail',name:'Nail',sub:'Two clicks: top of the nail, then its tip. Drag the ends to adjust.',done:()=>!!(S.free.nail&&S.free.nail.b),
+  hint:'Nail: click where the nail enters, then where its tip ends. Drag either end, or the middle, to adjust.'},
+ STEPS.find(x=>x.t==='isth'),
+ STEPS.find(x=>x.t==='pan')
+];
+const stepList=()=>S.mode==='free'?FSTEPS:STEPS;
+function setTool(t){tool=t;renderSteps();const st=stepList().find(s=>s.t===t);$('hint').textContent=img&&st?st.hint:'';cvL.style.cursor=t==='pan'?'grab':'crosshair'}
 function renderSteps(){const el=$('steps');el.textContent='';let n=0;
-  for(const s of STEPS){if(s.tibia&&S.bone!=='tibia')continue;n++;const b=document.createElement('button');
+  for(const s of stepList()){if(s.tibia&&S.bone!=='tibia')continue;n++;const b=document.createElement('button');
     b.className='step'+(tool===s.t?' on':'')+(s.done()?' done':'');
     const d=document.createElement('span');d.className='dot';d.textContent=s.done()?'✓':(s.t==='pan'?'↔':n);
     const tx=document.createElement('span');const nm=document.createElement('span');nm.textContent=s.name;const sm=document.createElement('small');sm.textContent=s.sub;
     tx.append(nm,sm);b.append(d,tx);b.onclick=()=>setTool(s.t);el.appendChild(b)}}
 
-function handles(){const h=[];S.pts.forEach((p,i)=>h.push({p,kind:'pt',i}));
+function handles(){const h=[];if(S.mode!=='free')S.pts.forEach((p,i)=>h.push({p,kind:'pt',i}));
   for(const k of['a','b']){if(S.cal[k])h.push({p:S.cal[k],kind:'cal'});if(S.isth[k])h.push({p:S.isth[k],kind:'isth'})}
-  if(S.epi)h.push({p:S.epi,kind:'epi'});if(S.pphys)h.push({p:S.pphys,kind:'pphys'});return h}
+  if(S.mode!=='free'){if(S.epi)h.push({p:S.epi,kind:'epi'});if(S.pphys)h.push({p:S.pphys,kind:'pphys'})}return h}
 function hit(m){let best=null,bd=13;const want=tool==='pan'?null:((tool==='ends'||tool==='cut')?'pt':tool);for(const h of handles()){if(want&&h.kind!==want)continue;const s=toScr(h.p),d=Math.hypot(s.x-m.x,s.y-m.y);if(d<bd){bd=d;best=h}}return best}
 function mouse(e){const r=cvL.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
 function segNearest(q){let bi=1,bd=1e18;for(let i=0;i<S.pts.length-1;i++){const a=S.pts[i],b=S.pts[i+1],l2=(b.x-a.x)**2+(b.y-a.y)**2||1;
   const t=Math.max(0,Math.min(1,((q.x-a.x)*(b.x-a.x)+(q.y-a.y)*(b.y-a.y))/l2)),d=Math.hypot(q.x-(a.x+t*(b.x-a.x)),q.y-(a.y+t*(b.y-a.y)));if(d<bd){bd=d;bi=i+1}}return bi}
 
-cvL.addEventListener('pointerdown',e=>{if(!img)return;const m=mouse(e),ip=toImg(m),h=hit(m);cvL.setPointerCapture(e.pointerId);
+cvL.addEventListener('pointerdown',e=>{if(!img)return;const m=mouse(e),ip=toImg(m);cvL.setPointerCapture(e.pointerId);
+  if(S.mode==='free'&&tool[0]==='f'){freeDown(e,m,ip);return}
+  const h=hit(m);
   if(h){drag={p:h.p,h,sx:m.x,sy:m.y,moved:false};return}
   if(tool==='pan'){drag={pan:1,sx:m.x,sy:m.y,ox:V.ox,oy:V.oy};cvL.style.cursor='grabbing';return}
   if(tool==='ends'){if(S.pts.length<2){S.pts.push(ip);drag={p:ip,moved:true}}}
@@ -309,10 +346,10 @@ cvL.addEventListener('pointerdown',e=>{if(!img)return;const m=mouse(e),ip=toImg(
   else if(tool==='epi'){S.epi=ip;drag={p:ip}}
   else if(tool==='pphys'){S.pphys=ip;drag={p:ip}}
   changed()});
-cvL.addEventListener('pointermove',e=>{if(!drag)return;const m=mouse(e);
+cvL.addEventListener('pointermove',e=>{const m=mouse(e);if(S.mode==='free'&&tool[0]==='f'){freeMove(m);return}if(!drag)return;
   if(drag.pan){V.auto=false;V.ox=drag.ox+m.x-drag.sx;V.oy=drag.oy+m.y-drag.sy;draw();return}
   if(drag.sx!=null&&!drag.moved&&Math.hypot(m.x-drag.sx,m.y-drag.sy)<4)return;drag.moved=true;const ip=toImg(m);drag.p.x=ip.x;drag.p.y=ip.y;changed(true)});
-cvL.addEventListener('pointerup',()=>{if(!drag)return;const wasPan=drag.pan,dg=drag;drag=null;
+cvL.addEventListener('pointerup',e=>{if(S.mode==='free'&&tool[0]==='f'){freeUp(mouse(e));return}if(!drag)return;const wasPan=drag.pan,dg=drag;drag=null;
   if(wasPan){cvL.style.cursor='grab';return}
   if(tool==='cut'&&dg.h&&!dg.moved&&dg.h.kind==='pt'&&dg.h.i>0&&dg.h.i<S.pts.length-1)S.pts.splice(dg.h.i,1); // click a cut again = remove it
   if(tool==='ends'&&S.pts.length>=2)setTool('cut');
@@ -320,7 +357,7 @@ cvL.addEventListener('pointerup',()=>{if(!drag)return;const wasPan=drag.pan,dg=d
   else if(tool==='epi'&&S.epi)setTool(S.bone==='tibia'&&!S.pphys?'pphys':'pan');
   else if(tool==='pphys'&&S.pphys)setTool('pan');
   changed()});
-cvL.addEventListener('dblclick',e=>{const h=hit(mouse(e));if(h&&h.kind==='pt'&&tool!=='cut'){S.pts.splice(h.i,1);
+cvL.addEventListener('dblclick',e=>{if(S.mode==='free'){if(tool==='fcut'&&FS.lasso&&FS.lasso.poly&&FS.lasso.pts.length>=3)closeLasso();return}const h=hit(mouse(e));if(h&&h.kind==='pt'&&tool!=='cut'){S.pts.splice(h.i,1);
   // a double-click also added a point by its first click when on empty film: handled because hit() found the point
   changed()}});
 cvL.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.15:1/1.15,mouse(e))},{passive:false});
@@ -330,10 +367,11 @@ function changed(light){draw();if(!light){renderSteps();saveSoon()}}
 const C={amber:'#f2b84b',red:'#ff6b5e',cyan:'#5ad1e6',green:'#58c88a',white:'#fff'};
 function label(g,t,x,y,col){g.font='600 12px -apple-system,system-ui,sans-serif';const w=g.measureText(t).width+10;g.fillStyle='rgba(8,12,16,.85)';g.fillRect(x,y-9,w,18);g.fillStyle=col||'#fff';g.textBaseline='middle';g.fillText(t,x+5,y)}
 function dot(g,p,col,r){g.beginPath();g.arc(p.x,p.y,r||5,0,7);g.fillStyle=col;g.fill();g.lineWidth=1.5;g.strokeStyle='#0b0f14';g.stroke()}
-function draw(){const R=compute();if(A.run){cancelAnimationFrame(A.raf);A.run=false;A.ph=4;A.t=1}drawL(R);drawR(R);renderResults(R);renderNail(R);caption()}
+function draw(){const R=compute();if(A.run){cancelAnimationFrame(A.raf);A.run=false;A.ph=4;A.t=1}document.body.classList.toggle('free',S.mode==='free');drawL(R);if(S.mode!=='free')drawR(R);else lastR=R;renderResults(R);renderFree(R);renderNail(R);caption()}
 function drawL(R){const z=sizeCanvas(cvL),g=gL;g.setTransform(z.d,0,0,z.d,0,0);g.clearRect(0,0,z.w,z.h);if(!img)return;
   g.imageSmoothingQuality='high';g.drawImage(img,V.ox,V.oy,img.width*V.s,img.height*V.s);
   const sp=S.pts.map(toScr);
+  if(S.mode==='free')drawFree(g,R);else{
   // osteotomy wedges
   const hw=(R.isthPx?R.isthPx*2.4:img.width*S.strip/100*.45)*V.s;
   R.ost.forEach((o,i)=>{const P=toScr(o.at),n1={x:-o.u1.y,y:o.u1.x},n2={x:-o.u2.y,y:o.u2.x},s=o.side;
@@ -344,13 +382,14 @@ function drawL(R){const z=sizeCanvas(cvL),g=gL;g.setTransform(z.d,0,0,z.d,0,0);g
   if(sp.length){g.beginPath();sp.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.strokeStyle=C.amber;g.lineWidth=2;g.stroke();
     sp.forEach((p,i)=>dot(g,p,i===0||i===sp.length-1?C.white:C.amber,i===0||i===sp.length-1?6:5));
     label(g,'Entry',sp[0].x+10,sp[0].y-12,C.white);if(sp.length>1)label(g,'Growth plate',sp[sp.length-1].x+10,sp[sp.length-1].y+12,C.white)}
+  }
   // scale
   if(S.cal.a){const a=toScr(S.cal.a);dot(g,a,C.green,4);if(S.cal.b){const b=toScr(S.cal.b);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.strokeStyle=C.green;g.lineWidth=2;g.stroke();dot(g,b,C.green,4);label(g,'Scale '+S.cal.mm+' mm',(a.x+b.x)/2+8,(a.y+b.y)/2,C.green)}}
   // isthmus
   if(S.isth.a){const a=toScr(S.isth.a);dot(g,a,C.cyan,4);if(S.isth.b){const b=toScr(S.isth.b);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.strokeStyle=C.cyan;g.lineWidth=2;g.stroke();dot(g,b,C.cyan,4);
     label(g,'Isthmus '+(R.isthMm!=null?R.isthMm.toFixed(1)+' mm':'(set scale)'),Math.max(a.x,b.x)+8,(a.y+b.y)/2,C.cyan)}}
-  if(S.epi){const p=toScr(S.epi);dot(g,p,'#c9a4ff',5);label(g,'Joint surface'+(R.epiMm!=null?' · epiphysis '+R.epiMm.toFixed(1)+' mm':''),p.x+10,p.y,'#c9a4ff')}
-  if(S.pphys&&S.bone==='tibia'){const p=toScr(S.pphys);dot(g,p,'#c9a4ff',5);label(g,'Proximal growth plate'+(R.pphysMm!=null?' · '+R.pphysMm.toFixed(1)+' mm':''),p.x+10,p.y,'#c9a4ff')}
+  if(S.epi&&S.mode!=='free'){const p=toScr(S.epi);dot(g,p,'#c9a4ff',5);label(g,'Joint surface'+(R.epiMm!=null?' · epiphysis '+R.epiMm.toFixed(1)+' mm':''),p.x+10,p.y,'#c9a4ff')}
+  if(S.pphys&&S.bone==='tibia'&&S.mode!=='free'){const p=toScr(S.pphys);dot(g,p,'#c9a4ff',5);label(g,'Proximal growth plate'+(R.pphysMm!=null?' · '+R.pphysMm.toFixed(1)+' mm':''),p.x+10,p.y,'#c9a4ff')}
 }
 
 /* ---------- Drawing: the surgery, step by step ---------- */
@@ -430,7 +469,7 @@ $('playBtn').onclick=play;
 /* ---------- The nail itself ---------- */
 function renderNail(R){const n=R.nail||NAILS[1],c=$('cvN'),r=c.getBoundingClientRect(),dp=window.devicePixelRatio||1;if(r.width<10)return;
   c.width=Math.round(r.width*dp);c.height=Math.round(r.height*dp);const g=c.getContext('2d');g.setTransform(dp,0,0,dp,0,0);g.clearRect(0,0,r.width,r.height);
-  const fix=R.fix||(S.bone==='femur'?'L':'S'),len=r.width-30,w=6+n.d*2.3,mw=w*.6,tip=(fix==='LON'?n.S:n[fix])*2.2+10,fem=len*.58;
+  const fix=R.fix||freeFix(),len=r.width-30,w=6+n.d*2.3,mw=w*.6,tip=(fix==='LON'?n.S:n[fix])*2.2+10,fem=len*.58;
   g.save();g.translate(12,50);g.rotate(-Math.PI/2);drawMale(g,0,0,len-tip,tip,w,mw,fix);drawFemale(g,0,0,fem,w);g.restore();
   g.font='600 11.5px -apple-system,system-ui,sans-serif';g.textBaseline='middle';g.fillStyle='#a3afbd';
   g.fillText('Female · hollow',12,18);g.fillText('Male · solid',12+fem+8,18);
@@ -438,6 +477,81 @@ function renderNail(R){const n=R.nail||NAILS[1],c=$('cvN'),r=c.getBoundingClient
   const t=fix==='LON'?'Pin end · '+n.pin:(fix==='L'?'Long':'Short')+' thread '+n[fix]+' mm';g.fillText(t,r.width-12-g.measureText(t).width,84);
   const ch=$('chips');ch.textContent='';for(const x of NAILS){const b=document.createElement('button');b.className='btn'+(x===n?' on':'');b.textContent=x.d.toFixed(1);
     b.onclick=()=>{S.size=(x===R.auto)?null:x.d;changed()};ch.appendChild(b)}}
+const freeFix=()=>{const o=S.bone==='femur'?['L','S','LON']:['S','LON'];return o.includes(S.fix)?S.fix:o[0]};
+
+/* ---------- Free cut: outline a piece, pin, turn, move, nail ---------- */
+const FS={sel:[],lasso:null,undo:[]};
+const mApply=(M,p)=>({x:M[0]*p.x+M[2]*p.y+M[4],y:M[1]*p.x+M[3]*p.y+M[5]});
+const mMul=(A,B)=>[A[0]*B[0]+A[2]*B[1],A[1]*B[0]+A[3]*B[1],A[0]*B[2]+A[2]*B[3],A[1]*B[2]+A[3]*B[3],A[0]*B[4]+A[2]*B[5]+A[4],A[1]*B[4]+A[3]*B[5]+A[5]];
+const mInv=M=>{const d=M[0]*M[3]-M[1]*M[2];return[M[3]/d,-M[1]/d,-M[2]/d,M[0]/d,(M[2]*M[5]-M[3]*M[4])/d,(M[1]*M[4]-M[0]*M[5])/d]};
+const mRot=(P,t)=>{const c=Math.cos(t),n=Math.sin(t);return[c,n,-n,c,P.x-c*P.x+n*P.y,P.y-n*P.x-c*P.y]};
+function inPoly(q,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a.y>q.y)!==(b.y>q.y)&&q.x<(b.x-a.x)*(q.y-a.y)/(b.y-a.y)+a.x)c=!c}return c}
+function pieceAt(ip){const P=S.free.pieces;for(let i=P.length-1;i>=0;i--)if(inPoly(mApply(mInv(P[i].M),ip),P[i].poly))return i;return-1}
+const centroid=poly=>{let x=0,y=0;for(const q of poly){x+=q.x;y+=q.y}return{x:x/poly.length,y:y/poly.length}};
+function fSnap(){FS.undo.push(JSON.stringify(S.free));if(FS.undo.length>40)FS.undo.shift()}
+function closeLasso(){const pts=FS.lasso.pts;FS.lasso=null;if(pts.length<3)return;fSnap();S.free.pieces.push({poly:pts.map(q=>({x:q.x,y:q.y})),M:[1,0,0,1,0,0],rot:0});
+  FS.sel=[S.free.pieces.length-1];setTool('fpin');changed()}
+function fRotate(dt){if(!S.free.pin||!FS.sel.length)return;const Rm=mRot(S.free.pin,dt);for(const i of FS.sel){const p=S.free.pieces[i];if(!p)continue;p.M=mMul(Rm,p.M);p.rot+=dt}}
+function freeDown(e,m,ip){const F=S.free;
+  if(tool==='fcut'){const L=FS.lasso;
+    if(L&&L.poly){const f=toScr(L.pts[0]);if(L.pts.length>=3&&Math.hypot(f.x-m.x,f.y-m.y)<12)closeLasso();else{L.pts.push(ip);draw()}return}
+    FS.lasso={pts:[ip],poly:false,sx:m.x,sy:m.y,far:0};drag={free:1,kind:'lasso'};return}
+  if(tool==='fpin'){fSnap();F.pin=ip;drag={free:1,kind:'pin'};draw();return}
+  if(tool==='fnail'){const n=F.nail;
+    if(!n||!n.b){fSnap();if(!n)F.nail={a:ip,b:null};else{n.b=ip;drag={free:1,kind:'nend',p:n.b}}draw();return}
+    const da=Math.hypot(toScr(n.a).x-m.x,toScr(n.a).y-m.y),db=Math.hypot(toScr(n.b).x-m.x,toScr(n.b).y-m.y);fSnap();
+    if(Math.min(da,db)<16)drag={free:1,kind:'nend',p:da<db?n.a:n.b};else drag={free:1,kind:'nmove',last:ip};return}
+  const i=pieceAt(ip);
+  if(i>=0){if(e.shiftKey){const k=FS.sel.indexOf(i);if(k>=0)FS.sel.splice(k,1);else FS.sel.push(i)}else if(!FS.sel.includes(i))FS.sel=[i]}
+  else if(tool==='fmove'){FS.sel=[];draw();return}
+  if(tool==='frot'){if(!F.pin){setTool('fpin');draw();return}if(!FS.sel.length){draw();return}fSnap();drag={free:1,kind:'rot',last:Math.atan2(ip.y-F.pin.y,ip.x-F.pin.x)};draw();return}
+  if(tool==='fmove'&&FS.sel.length){fSnap();drag={free:1,kind:'move',last:ip};draw()}}
+function freeMove(m){const ip=toImg(m),F=S.free;
+  if(!drag){if(FS.lasso&&FS.lasso.poly){FS.hover=ip;drawL(lastR||compute())}return}
+  if(drag.kind==='lasso'){const L=FS.lasso,q=toScr(L.pts[L.pts.length-1]);L.far=Math.max(L.far,Math.hypot(m.x-L.sx,m.y-L.sy));if(Math.hypot(q.x-m.x,q.y-m.y)>3)L.pts.push(ip)}
+  else if(drag.kind==='pin'){F.pin.x=ip.x;F.pin.y=ip.y}
+  else if(drag.kind==='nend'){drag.p.x=ip.x;drag.p.y=ip.y}
+  else if(drag.kind==='nmove'){const dx=ip.x-drag.last.x,dy=ip.y-drag.last.y;drag.last=ip;for(const q of[F.nail.a,F.nail.b]){q.x+=dx;q.y+=dy}}
+  else if(drag.kind==='rot'){const a=Math.atan2(ip.y-F.pin.y,ip.x-F.pin.x);let dt=a-drag.last;if(dt>Math.PI)dt-=2*Math.PI;if(dt<-Math.PI)dt+=2*Math.PI;drag.last=a;fRotate(dt)}
+  else if(drag.kind==='move'){const dx=ip.x-drag.last.x,dy=ip.y-drag.last.y;drag.last=ip;for(const i of FS.sel){const p=F.pieces[i];if(p)p.M=mMul([1,0,0,1,dx,dy],p.M)}}
+  changed(true)}
+function freeUp(m){if(!drag)return;const k=drag.kind;drag=null;
+  if(k==='lasso'){const L=FS.lasso;if(L.far<6){L.poly=true;L.pts=[L.pts[0]];draw();return}if(L.pts.length>=8)closeLasso();else{FS.lasso=null;draw()}return}
+  if(k==='pin')setTool(FS.sel.length?'frot':'fmove');
+  changed()}
+function drawFree(g,R){const F=S.free,k=R.k;g.save();g.translate(V.ox,V.oy);g.scale(V.s,V.s);
+  const path=poly=>{g.beginPath();poly.forEach((q,i)=>i?g.lineTo(q.x,q.y):g.moveTo(q.x,q.y));g.closePath()};
+  for(const p of F.pieces){path(p.poly);g.fillStyle='#000';g.fill()}                       // the hole each piece leaves
+  F.pieces.forEach((p,i)=>{const on=FS.sel.includes(i);g.save();g.transform(...p.M);path(p.poly);g.save();g.clip();g.drawImage(img,0,0);g.restore();
+    g.lineWidth=(on?2:1)/V.s;g.strokeStyle=on?C.cyan:'rgba(255,255,255,.45)';g.setLineDash(on?[]:[5/V.s,4/V.s]);g.stroke();g.restore()});
+  g.restore();g.setLineDash([]);
+  F.pieces.forEach((p,i)=>{const c=toScr(mApply(p.M,centroid(p.poly)));label(g,'Piece '+(i+1)+(Math.abs(p.rot)>.002?' · '+Math.abs(p.rot*180/Math.PI).toFixed(0)+'°':''),c.x+8,c.y,FS.sel.includes(i)?C.cyan:'#fff')});
+  const L=FS.lasso;if(L){g.beginPath();L.pts.forEach((q,i)=>{const t=toScr(q);i?g.lineTo(t.x,t.y):g.moveTo(t.x,t.y)});if(L.poly&&FS.hover){const t=toScr(FS.hover);g.lineTo(t.x,t.y)}
+    g.strokeStyle=C.amber;g.lineWidth=2;g.setLineDash([6,4]);g.stroke();g.setLineDash([]);if(L.poly)L.pts.forEach((q,i)=>dot(g,toScr(q),i?C.amber:C.white,i?3:6))}
+  if(F.nail){const n=F.nail,a=toScr(n.a);if(!n.b)dot(g,a,C.cyan,5);else{const b=toScr(n.b),len=Math.hypot(b.x-a.x,b.y-a.y),nl=R.nail||NAILS.find(x=>x.d===S.size)||NAILS[1],fix=freeFix();
+      const pm=k?k*V.s:null,w=pm?Math.max(2,nl.d*pm):6,mw=Math.max(1.2,w*.6),tip=Math.min(len*.5,pm?(fix==='LON'?nl.S:nl[fix])*pm:14),fem=Math.max(4,len-tip-(pm?FEMALE_SHORT*pm:6));
+      g.save();g.translate(a.x,a.y);g.rotate(Math.atan2(b.y-a.y,b.x-a.x)-Math.PI/2);drawMale(g,0,0,len-tip,tip,w,mw,fix);drawFemale(g,0,0,fem,w);g.restore();
+      if(tool==='fnail'){dot(g,a,C.cyan,5);dot(g,b,C.cyan,5)}
+      label(g,'Ø '+nl.d.toFixed(1)+(k?' · '+(dist(n.a,n.b)/k).toFixed(0)+' mm':''),Math.max(a.x,b.x)+w+10,(a.y+b.y)/2,C.cyan)}}
+  if(F.pin){const p=toScr(F.pin);g.beginPath();g.arc(p.x,p.y,7,0,7);g.fillStyle=C.red;g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.stroke();g.beginPath();g.arc(p.x,p.y,2,0,7);g.fillStyle='#fff';g.fill();label(g,'Pin',p.x+12,p.y-12,C.red)}
+}
+function renderFree(R){const c=$('resFree');c.textContent='';c.appendChild(el('h3',null,'Pieces and nail'));const F=S.free;
+  if(!F.pieces.length)c.appendChild(el('p','note','Choose Cut out and draw around the piece of bone to free. Then put the pin at the bend and turn the piece straight.'));
+  else{const l=el('div','ostlist');F.pieces.forEach((p,i)=>{const d=el('div'),c0=centroid(p.poly),c1=mApply(p.M,c0),sh=dist(c0,c1);
+      d.append(el('b',null,'Piece '+(i+1)),el('span',null,'turned '+Math.abs(p.rot*180/Math.PI).toFixed(0)+'°'+(R.k?' · moved '+(sh/R.k).toFixed(0)+' mm':'')));l.appendChild(d)});c.appendChild(l)}
+  const n=F.nail;if(n&&n.b){const nl=R.nail||NAILS.find(x=>x.d===S.size)||NAILS[1],fix=freeFix(),row=el('div','row');row.style.marginTop='8px';row.appendChild(el('label',null,'Distal fixation'));
+    const sel=el('select');for(const o of(S.bone==='femur'?['L','S','LON']:['S','LON'])){const op=el('option',null,o==='L'?'Long thread':o==='S'?'Short thread':'Pin (LON)');op.value=o;sel.appendChild(op)}
+    sel.value=fix;sel.onchange=()=>{S.fix=sel.value;changed()};row.appendChild(sel);c.appendChild(row);
+    if(R.k){const len=dist(n.a,n.b)/R.k,th=fix==='LON'?0:nl[fix],lens=nl['len'+fix],cat=lens.find(x=>x>=len);
+      kv(c,[['Nail, top to tip',len.toFixed(0)+' mm'],['Diameter',nl.d.toFixed(1)+' mm'],fix==='LON'?['Locking',nl.pin]:['Thread at the tip',th+' mm'],['Female cut (to growth plate − 7)',(len-th-FEMALE_SHORT).toFixed(0)+' mm'],['Implant length',cat?cat+' mm':'too short (max '+lens[lens.length-1]+' mm)',cat?'ok':'bad']]);
+      c.appendChild(el('p','note','Put the tip where the thread should end in the epiphysis. The thread then starts at the growth plate.'))}
+    else c.appendChild(el('p','note','Set the scale to get the nail length in mm.'))}
+  else if(F.pieces.length)c.appendChild(el('p','note','When the bone is straight, choose Nail and click the top and the tip.'))}
+$('fUndo').onclick=()=>{const u=FS.undo.pop();if(!u)return;S.free=JSON.parse(u);FS.sel=FS.sel.filter(i=>i<S.free.pieces.length);FS.lasso=null;changed()};
+$('fDel').onclick=()=>{if(!FS.sel.length)return;fSnap();S.free.pieces=S.free.pieces.filter((p,i)=>!FS.sel.includes(i));FS.sel=[];changed()};
+$('fReset').onclick=()=>{if(!confirm('Remove all pieces, the pin and the nail?'))return;fSnap();S.free={pieces:[],pin:null,nail:null};FS.sel=[];FS.lasso=null;setTool('fcut');changed()};
+document.querySelectorAll('[data-rot]').forEach(b=>b.onclick=()=>{if(!S.free.pin){setTool('fpin');return}if(!FS.sel.length)return;fSnap();fRotate(+b.dataset.rot*Math.PI/180);changed()});
+document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>{S.mode=b.dataset.m;FS.lasso=null;setTool(img?nextTool():'pan');syncUi();changed()});
 
 /* ---------- Results ---------- */
 function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
@@ -485,7 +599,7 @@ function renderResults(R){
 }
 
 /* ---------- UI wiring ---------- */
-function syncUi(){$('caseName').value=S.name;$('bone').value=S.bone;$('side').value=S.side;$('view').value=S.view;$('calMm').value=S.cal.mm;$('stripW').value=S.strip;renderSteps()}
+function syncUi(){if(!S.free)S.free={pieces:[],pin:null,nail:null};document.body.classList.toggle('free',S.mode==='free');document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===S.mode));$('caseName').value=S.name;$('bone').value=S.bone;$('side').value=S.side;$('view').value=S.view;$('calMm').value=S.cal.mm;$('stripW').value=S.strip;renderSteps()}
 $('replaceImg').onclick=()=>$('file').click();
 $('file').onchange=e=>{loadImageFile(e.target.files[0]);e.target.value=''};
 $('pickFile').onclick=$('addX').onclick=()=>$('files').click();
@@ -500,12 +614,12 @@ $('stripW').oninput=e=>{S.strip=+e.target.value;changed()};
 $('caseName').oninput=e=>{S.name=e.target.value;saveSoon()};
 $('bone').onchange=e=>{S.bone=e.target.value;S.fix=null;changed()};
 $('side').onchange=e=>{S.side=e.target.value;saveSoon()};$('view').onchange=e=>{S.view=e.target.value;saveSoon()};
-$('newCase').onclick=()=>{S=blank();img=null;$('drop').style.display='';setTool('pan');syncUi();draw();refreshCaseList()};
+$('newCase').onclick=()=>{S=blank();FS.sel=[];FS.lasso=null;FS.undo=[];img=null;$('drop').style.display='';setTool('pan');syncUi();draw();refreshCaseList()};
 $('delCase').onclick=()=>{if(!confirm('Delete this case from this computer?'))return;if(db)tx('readwrite').delete(S.id);$('newCase').onclick()};
 $('caseSel').onchange=async e=>{const c=(await allCases()).find(x=>x.id===e.target.value);if(c)openCase(c)};
-function openCase(c){S=Object.assign(blank(),c);img=null;syncUi();if(S.imgData)setImage(S.imgData,false);else{$('drop').style.display='';draw()}refreshCaseList()}
+function openCase(c){S=Object.assign(blank(),{mode:'guided'},c);FS.sel=[];FS.lasso=null;FS.undo=[];img=null;syncUi();if(S.imgData)setImage(S.imgData,false);else{$('drop').style.display='';draw()}refreshCaseList()}
 $('printBtn').onclick=()=>window.print();
-$('savePng').onclick=()=>{if(!img)return;const c=document.createElement('canvas');c.width=cvL.width+cvR.width;c.height=Math.max(cvL.height,cvR.height);const g=c.getContext('2d');g.fillStyle='#05080b';g.fillRect(0,0,c.width,c.height);g.drawImage(cvL,0,0);g.drawImage(cvR,cvL.width,0);
+$('savePng').onclick=()=>{if(!img)return;const c=document.createElement('canvas');const fr=S.mode==='free';c.width=cvL.width+(fr?0:cvR.width);c.height=fr?cvL.height:Math.max(cvL.height,cvR.height);const g=c.getContext('2d');g.fillStyle='#05080b';g.fillRect(0,0,c.width,c.height);g.drawImage(cvL,0,0);if(!fr)g.drawImage(cvR,cvL.width,0);
   const a=document.createElement('a');a.download=(S.name||'fd-plan').replace(/[^\w\-]+/g,'_')+'.png';a.href=c.toDataURL('image/png');a.click()};
 window.addEventListener('resize',()=>{if(V.auto)fit();draw()});
 if(window.ResizeObserver)new ResizeObserver(()=>{if(V.auto)fit();draw()}).observe($('wrapL'));

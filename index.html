@@ -6,20 +6,26 @@
 <title>FD Nail Planner</title>
 <style>
 :root{
-  --bg:#0b0f14; --panel:#131a22; --panel2:#18212b; --line:#263242;
-  --text:#e6edf3; --muted:#a3afbd;
-  --amber:#f2b84b; --red:#ff6b5e; --cyan:#5ad1e6; --green:#58c88a; --warn:#f0a03c;
+  --bg:#0a120d; --panel:#12211a; --panel2:#182b21; --line:#2b4435; --head:#1f5a33;
+  --text:#f2f6f1; --muted:#a9bdae;
+  --amber:#d6b67c; --red:#ff7a6b; --cyan:#4fb0c6; --green:#7fca5b; --warn:#e3b566; --gold:#c9a463;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.45;display:flex;flex-direction:column}
 button,select,input{font:inherit;color:inherit}
-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
-header h1{font-size:16px;font-weight:650;letter-spacing:.2px;margin-right:6px}
-header h1 span{color:var(--cyan)}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--head);border-bottom:2px solid var(--gold);flex-wrap:wrap}
+header .btn,header select,header input{border-color:rgba(255,255,255,.22)}
+header .btn:not(.primary){background:rgba(0,0,0,.18)}
+header .seg{border-color:rgba(255,255,255,.3)}
+.brand{display:flex;align-items:center;gap:9px;margin-right:6px}
+.brand svg{width:34px;height:34px;flex:none}
+.brand small{display:block;font-size:10.5px;font-weight:500;letter-spacing:.3px;color:#cfe6c8;margin-top:1px}
+header h1{font-size:16px;font-weight:700;letter-spacing:.1px;line-height:1.1}
+header h1 span{color:var(--amber)}
 .btn{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 11px;cursor:pointer;white-space:nowrap}
-.btn:hover{border-color:#3a4a5f}
-.btn.primary{background:var(--cyan);color:#06222a;border-color:var(--cyan);font-weight:600}
+.btn:hover{border-color:#4d6f5a}
+.btn.primary{background:var(--gold);color:#22190a;border-color:var(--gold);font-weight:650}
 .btn.danger{color:var(--red)}
 select,input[type=text],input[type=number]{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:6px 8px}
 input[type=number]{width:84px}
@@ -29,12 +35,12 @@ main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.62fr) 360
 .pane h2{font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);padding:8px 12px;display:flex;align-items:center;gap:8px}
 .pane h2 .spacer{flex:1}
 .pane h2 .btn{padding:2px 8px;font-size:12px;letter-spacing:0;text-transform:none}
-.cvwrap{flex:1;position:relative;min-height:0;background:#05080b}
+.cvwrap{flex:1;position:relative;min-height:0;background:#050806}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 #cvL{cursor:crosshair}
 .drop{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;color:var(--muted)}
 .drop b{color:var(--text);font-size:16px}
-.hint{position:absolute;left:10px;bottom:10px;right:10px;background:rgba(11,15,20,.82);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;pointer-events:none}
+.hint{position:absolute;left:10px;bottom:10px;right:10px;background:rgba(10,18,13,.86);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;pointer-events:none}
 .hint:empty{display:none}
 aside{overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px;background:var(--panel)}
 .card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
@@ -44,9 +50,9 @@ aside{overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px;bac
 .steps{display:flex;flex-direction:column;gap:5px}
 .step{display:flex;align-items:flex-start;gap:9px;text-align:left;background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 8px;cursor:pointer;width:100%}
 .step:hover{background:rgba(255,255,255,.03)}
-.step.on{border-color:var(--cyan);background:rgba(90,209,230,.07)}
+.step.on{border-color:var(--gold);background:rgba(201,164,99,.1)}
 .step .dot{flex:none;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--muted);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--muted);margin-top:1px}
-.step.done .dot{background:var(--green);border-color:var(--green);color:#06210f;font-weight:700}
+.step.done .dot{background:#6fbf4a;border-color:#6fbf4a;color:#0c2408;font-weight:700}
 .step small{display:block;color:var(--muted);font-size:12px}
 .big{font-size:26px;font-weight:650;letter-spacing:-.3px}
 .big small{font-size:13px;font-weight:400;color:var(--muted)}
@@ -56,7 +62,7 @@ aside{overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px;bac
 table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
 th,td{padding:4px 5px;text-align:left;border-bottom:1px solid var(--line)}
 th{color:var(--muted);font-weight:500;font-size:11px}
-tr.pick td{background:rgba(90,209,230,.1)}
+tr.pick td{background:rgba(79,176,198,.14)}
 tr.pick td:first-child{color:var(--cyan);font-weight:650}
 tr[data-size]{cursor:pointer}
 .ok{color:var(--green)} .bad{color:var(--red)} .wn{color:var(--warn)}
@@ -67,19 +73,19 @@ tr[data-size]{cursor:pointer}
 .ostlist b{color:var(--red);font-weight:600}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{background:transparent;border:0;padding:6px 12px;cursor:pointer}
-.seg button.on{background:var(--cyan);color:#06222a;font-weight:650}
+.seg button.on{background:#fff;color:#1c4a2d;font-weight:650}
 body.free #paneR{display:none}
 body.free main{grid-template-columns:minmax(0,1fr) 360px}
 body.free .gOnly{display:none}
 body:not(.free) .fOnly{display:none}
 .play{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);background:var(--panel)}
 .play .ph{padding:4px 9px;font-size:12px}
-.play .ph.on{border-color:var(--cyan);color:var(--cyan)}
+.play .ph.on{border-color:var(--gold);color:var(--amber)}
 #cap{flex-basis:100%;font-size:13px;min-height:20px}
 canvas.inline{position:static;height:96px}
 .chips{display:flex;gap:6px;margin-top:8px}
 .chips .btn{flex:1;padding:5px 0;text-align:center;font-variant-numeric:tabular-nums}
-.chips .btn.on{background:var(--cyan);color:#06222a;border-color:var(--cyan);font-weight:650}
+.chips .btn.on{background:var(--gold);color:#22190a;border-color:var(--gold);font-weight:650}
 @media (max-width:1100px){
   body{height:auto}
   main{grid-template-columns:1fr;grid-auto-rows:auto}
@@ -95,13 +101,16 @@ canvas.inline{position:static;height:96px}
   aside{grid-column:1/-1;background:#fff;display:block;padding:0}
   .card{background:#fff;border:1px solid #bbb;color:#000;margin-top:6mm;break-inside:avoid}
   .card h3,.kv span:nth-child(odd),th,.note,.big small,.row label{color:#444}
-  tr.pick td{background:#e6f6fa}
+  tr.pick td{background:#e4f1f4}
 }
 </style>
 </head>
 <body>
 <header>
-  <h1><span>FD</span> Nail Planner</h1>
+  <div class="brand">
+    <svg viewBox="0 0 200 200" aria-hidden="true"><path d="M 112.85 27.12 A 74 74 0 0 1 169.54 125.31" fill="none" stroke="#c9a463" stroke-width="22" stroke-linecap="round"/><path d="M 156.69 147.57 A 74 74 0 0 1 43.31 147.57" fill="none" stroke="#6fbf4a" stroke-width="22" stroke-linecap="round"/><path d="M 30.46 125.31 A 74 74 0 0 1 87.15 27.12" fill="none" stroke="#2a8fa6" stroke-width="22" stroke-linecap="round"/><circle cx="100" cy="100" r="23" fill="#fff"/></svg>
+    <h1><span>FD</span> Nail Planner<small>FBD IPU · Fragile Bone Disease</small></h1>
+  </div>
   <span class="seg" id="modeSeg"><button data-m="free">Free cut</button><button data-m="guided">Guided</button></span>
   <select id="caseSel" title="Saved cases"></select>
   <input id="caseName" type="text" placeholder="Case label (initials, not names)" style="width:220px">
@@ -364,8 +373,8 @@ cvL.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.15:1/1.15,
 function changed(light){draw();if(!light){renderSteps();saveSoon()}}
 
 /* ---------- Drawing: film with marks ---------- */
-const C={amber:'#f2b84b',red:'#ff6b5e',cyan:'#5ad1e6',green:'#58c88a',white:'#fff'};
-function label(g,t,x,y,col){g.font='600 12px -apple-system,system-ui,sans-serif';const w=g.measureText(t).width+10;g.fillStyle='rgba(8,12,16,.85)';g.fillRect(x,y-9,w,18);g.fillStyle=col||'#fff';g.textBaseline='middle';g.fillText(t,x+5,y)}
+const C={amber:'#d6b67c',red:'#ff7a6b',cyan:'#4fb0c6',green:'#7fca5b',white:'#fff'};
+function label(g,t,x,y,col){g.font='600 12px -apple-system,system-ui,sans-serif';const w=g.measureText(t).width+10;g.fillStyle='rgba(8,16,11,.88)';g.fillRect(x,y-9,w,18);g.fillStyle=col||'#fff';g.textBaseline='middle';g.fillText(t,x+5,y)}
 function dot(g,p,col,r){g.beginPath();g.arc(p.x,p.y,r||5,0,7);g.fillStyle=col;g.fill();g.lineWidth=1.5;g.strokeStyle='#0b0f14';g.stroke()}
 function draw(){const R=compute();if(A.run){cancelAnimationFrame(A.raf);A.run=false;A.ph=4;A.t=1}document.body.classList.toggle('free',S.mode==='free');drawL(R);if(S.mode!=='free')drawR(R);else lastR=R;renderResults(R);renderFree(R);renderNail(R);caption()}
 function drawL(R){const z=sizeCanvas(cvL),g=gL;g.setTransform(z.d,0,0,z.d,0,0);g.clearRect(0,0,z.w,z.h);if(!img)return;
@@ -388,8 +397,8 @@ function drawL(R){const z=sizeCanvas(cvL),g=gL;g.setTransform(z.d,0,0,z.d,0,0);g
   // isthmus
   if(S.isth.a){const a=toScr(S.isth.a);dot(g,a,C.cyan,4);if(S.isth.b){const b=toScr(S.isth.b);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.strokeStyle=C.cyan;g.lineWidth=2;g.stroke();dot(g,b,C.cyan,4);
     label(g,'Isthmus '+(R.isthMm!=null?R.isthMm.toFixed(1)+' mm':'(set scale)'),Math.max(a.x,b.x)+8,(a.y+b.y)/2,C.cyan)}}
-  if(S.epi&&S.mode!=='free'){const p=toScr(S.epi);dot(g,p,'#c9a4ff',5);label(g,'Joint surface'+(R.epiMm!=null?' · epiphysis '+R.epiMm.toFixed(1)+' mm':''),p.x+10,p.y,'#c9a4ff')}
-  if(S.pphys&&S.bone==='tibia'&&S.mode!=='free'){const p=toScr(S.pphys);dot(g,p,'#c9a4ff',5);label(g,'Proximal growth plate'+(R.pphysMm!=null?' · '+R.pphysMm.toFixed(1)+' mm':''),p.x+10,p.y,'#c9a4ff')}
+  if(S.epi&&S.mode!=='free'){const p=toScr(S.epi);dot(g,p,'#cfe6c8',5);label(g,'Joint surface'+(R.epiMm!=null?' · epiphysis '+R.epiMm.toFixed(1)+' mm':''),p.x+10,p.y,'#cfe6c8')}
+  if(S.pphys&&S.bone==='tibia'&&S.mode!=='free'){const p=toScr(S.pphys);dot(g,p,'#cfe6c8',5);label(g,'Proximal growth plate'+(R.pphysMm!=null?' · '+R.pphysMm.toFixed(1)+' mm':''),p.x+10,p.y,'#cfe6c8')}
 }
 
 /* ---------- Drawing: the surgery, step by step ---------- */
@@ -437,9 +446,9 @@ function drawR(R){lastR=R;const z=sizeCanvas(cvR),g=gR;g.setTransform(z.d,0,0,z.
   const yP=y0+L*d, mm=R.k?R.k*d:null; // screen px per mm
   R.ost.forEach((o,i)=>{const y=y0+o.cum*d;g.setLineDash([6,4]);g.strokeStyle=C.red;g.lineWidth=1.5;g.beginPath();g.moveTo(cx-W*d,y);g.lineTo(cx+W*d,y);g.stroke();g.setLineDash([]);
     label(g,(i+1)+' · '+o.ang.toFixed(0)+'°'+(R.k?' · '+(o.cum/R.k).toFixed(0)+' mm from entry':''),8,y,C.red)});
-  g.setLineDash([3,4]);g.strokeStyle='#c9a4ff';g.lineWidth=1.5;g.beginPath();g.moveTo(cx-W*d,yP);g.lineTo(cx+W*d,yP);g.stroke();g.setLineDash([]);
-  label(g,'Growth plate',8,yP,'#c9a4ff');
-  if(R.epiPx){const y=yP+R.epiPx*d;g.strokeStyle='#c9a4ff';g.beginPath();g.moveTo(cx-W*d*.6,y);g.lineTo(cx+W*d*.6,y);g.stroke()}
+  g.setLineDash([3,4]);g.strokeStyle='#cfe6c8';g.lineWidth=1.5;g.beginPath();g.moveTo(cx-W*d,yP);g.lineTo(cx+W*d,yP);g.stroke();g.setLineDash([]);
+  label(g,'Growth plate',8,yP,'#cfe6c8');
+  if(R.epiPx){const y=yP+R.epiPx*d;g.strokeStyle='#cfe6c8';g.beginPath();g.moveTo(cx-W*d*.6,y);g.lineTo(cx+W*d*.6,y);g.stroke()}
   if(!mm){label(g,'Set the scale to draw the nail',8,16,C.amber);return}
   if(!R.nail||A.ph<2)return;
   const w=Math.max(2,R.nail.d*mm), mw=Math.max(1.2,w*.6), fem=(R.Lmm-FEMALE_SHORT)*mm, tip=(R.fix==='LON'?R.nail.S:R.thread)*mm;
@@ -473,7 +482,7 @@ function renderNail(R){const n=R.nail||NAILS[1],c=$('cvN'),r=c.getBoundingClient
   g.save();g.translate(12,50);g.rotate(-Math.PI/2);drawMale(g,0,0,len-tip,tip,w,mw,fix);drawFemale(g,0,0,fem,w);g.restore();
   g.font='600 11.5px -apple-system,system-ui,sans-serif';g.textBaseline='middle';g.fillStyle='#a3afbd';
   g.fillText('Female · hollow',12,18);g.fillText('Male · solid',12+fem+8,18);
-  g.fillStyle='#5ad1e6';g.fillText('Ø '+n.d.toFixed(1)+' mm',12,84);
+  g.fillStyle='#d6b67c';g.fillText('Ø '+n.d.toFixed(1)+' mm',12,84);
   const t=fix==='LON'?'Pin end · '+n.pin:(fix==='L'?'Long':'Short')+' thread '+n[fix]+' mm';g.fillText(t,r.width-12-g.measureText(t).width,84);
   const ch=$('chips');ch.textContent='';for(const x of NAILS){const b=document.createElement('button');b.className='btn'+(x===n?' on':'');b.textContent=x.d.toFixed(1);
     b.onclick=()=>{S.size=(x===R.auto)?null:x.d;changed()};ch.appendChild(b)}}
@@ -619,7 +628,7 @@ $('delCase').onclick=()=>{if(!confirm('Delete this case from this computer?'))re
 $('caseSel').onchange=async e=>{const c=(await allCases()).find(x=>x.id===e.target.value);if(c)openCase(c)};
 function openCase(c){S=Object.assign(blank(),{mode:'guided'},c);FS.sel=[];FS.lasso=null;FS.undo=[];img=null;syncUi();if(S.imgData)setImage(S.imgData,false);else{$('drop').style.display='';draw()}refreshCaseList()}
 $('printBtn').onclick=()=>window.print();
-$('savePng').onclick=()=>{if(!img)return;const c=document.createElement('canvas');const fr=S.mode==='free';c.width=cvL.width+(fr?0:cvR.width);c.height=fr?cvL.height:Math.max(cvL.height,cvR.height);const g=c.getContext('2d');g.fillStyle='#05080b';g.fillRect(0,0,c.width,c.height);g.drawImage(cvL,0,0);if(!fr)g.drawImage(cvR,cvL.width,0);
+$('savePng').onclick=()=>{if(!img)return;const c=document.createElement('canvas');const fr=S.mode==='free';c.width=cvL.width+(fr?0:cvR.width);c.height=fr?cvL.height:Math.max(cvL.height,cvR.height);const g=c.getContext('2d');g.fillStyle='#050806';g.fillRect(0,0,c.width,c.height);g.drawImage(cvL,0,0);if(!fr)g.drawImage(cvR,cvL.width,0);
   const a=document.createElement('a');a.download=(S.name||'fd-plan').replace(/[^\w\-]+/g,'_')+'.png';a.href=c.toDataURL('image/png');a.click()};
 window.addEventListener('resize',()=>{if(V.auto)fit();draw()});
 if(window.ResizeObserver)new ResizeObserver(()=>{if(V.auto)fit();draw()}).observe($('wrapL'));
